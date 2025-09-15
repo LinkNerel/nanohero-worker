@@ -11,9 +11,9 @@ import requests
 from sqlalchemy import text
 from sqlalchemy import select
 
-from app.config import get_settings
-from app.db import session_scope, engine
-from app.models import Stream, User, Base
+from worker.config import get_settings
+from worker.db import session_scope, engine
+from worker.models import Stream, User, Base
 
 
 TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
@@ -153,7 +153,7 @@ def main_loop():
     cid = settings.TWITCH_CLIENT_ID or ''
     print(f"[twitch_worker] Config: TWITCH_CLIENT_ID len={len(cid)} present={bool(cid)}", flush=True)
     # Do not print DATABASE_URL, but confirm presence
-    from app.config import get_settings as _gs
+    from worker.config import get_settings as _gs
     try:
         print(f"[twitch_worker] Config: DATABASE_URL present={bool(_gs().DATABASE_URL)}", flush=True)
     except Exception:
