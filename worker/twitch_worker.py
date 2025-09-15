@@ -182,28 +182,23 @@ def main_loop():
             print("[twitch_worker] DB session closed. Starting to process streamers.", flush=True)
             
             # --- Process streamers in batches of 100 (Twitch API limit) ---
-            all_broadcaster_ids = [s.twitch_broadcaster_id for s in streamer_infos if s.twitch_broadcaster_id]
-            print(f"[twitch_worker] Refreshed list of broadcaster IDs to process: {all_broadcaster_ids}", flush=True)
+            # Create a map of twitch_id -> internal_user_id for efficient lookup
+            streamer_id_map = {s.twitch_broadcaster_id: s.id for s in streamer_infos if s.twitch_broadcaster_id}
+            all_broadcaster_ids = list(streamer_id_map.keys())
+            print(f"[twitch_worker] Found {len(all_broadcaster_ids)} broadcaster IDs to process.", flush=True)
             
             for i in range(0, len(all_broadcaster_ids), 100):
                 batch_ids = all_broadcaster_ids[i:i + 100]
                 print(f"[twitch_worker] Processing batch of {len(batch_ids)} broadcaster IDs.", flush=True)
                 
-                # Get all viewer counts for the current batch
                 live_streams_data = fetch_viewer_counts_batch(batch_ids, settings.TWITCH_CLIENT_ID, token)
-                
-                # Create a set of live broadcaster IDs for quick lookup
                 live_broadcaster_ids = set(live_streams_data.keys())
 
-                # Upsert data for all streamers in the batch
-                for s_info in streamer_infos:
-                    # If the streamer was in the batch and is live, use their viewer count
-                    if s_info.twitch_broadcaster_id in live_broadcaster_ids:
-                        viewer_count = live_streams_data[s_info.twitch_broadcaster_id]
-                        upsert_stream_row(s_info.id, viewer_count)
-                    # If the streamer was in the batch but not in the live response, they are offline
-                    elif s_info.twitch_broadcaster_id in batch_ids:
-                        upsert_stream_row(s_info.id, 0)
+                # Process only the streamers in the current batch
+                for twitch_id in batch_ids:
+                    internal_user_id = streamer_id_map[twitch_id]
+                    viewer_count = live_streams_data.get(twitch_id, 0)
+                    upsert_stream_row(internal_user_id, viewer_count)
 
         except Exception as e:
             print(f"[twitch_worker] !! FATAL loop error: {type(e).__name__} - {str(e)}\n{traceback.format_exc()}", flush=True)
