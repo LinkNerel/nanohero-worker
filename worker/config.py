@@ -7,6 +7,7 @@ class Settings:
     ENV: str = os.getenv("ENV", "dev")
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
+
     # Security / JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "dev_secret_change_me")
     JWT_ALG: str = os.getenv("JWT_ALG", "HS256")
