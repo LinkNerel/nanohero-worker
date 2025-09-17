@@ -31,14 +31,28 @@ class Settings:
 @lru_cache
 def get_settings() -> Settings:
     settings = Settings()
-    # K_SERVICE est une variable d'environnement définie par Cloud Run.
-    # Si elle existe et que la DATABASE_URL est toujours la valeur par défaut,
-    # cela signifie que l'injection de secret a échoué.
-    if os.getenv("K_SERVICE") and settings.DATABASE_URL == settings._DEFAULT_DB_URL:
-        raise ValueError(
-            "FATAL: DATABASE_URL is not set in the Cloud Run environment. "
-            "This indicates a problem with secret injection. "
-            "Please check that all required secrets exist and that the service account has the 'Secret Manager Secret Accessor' role for EACH of them."
-        )
+    is_prod = "K_SERVICE" in os.environ
+    
+    if is_prod:
+        # En production, on vérifie que les secrets essentiels sont bien présents.
+        # S'ils sont absents, cela signifie généralement un problème de configuration sur Cloud Run.
+        
+        # 1. Vérification de la base de données
+        if settings.DATABASE_URL == settings._DEFAULT_DB_URL:
+            raise ValueError(
+                "FATAL: DATABASE_URL is not set correctly in the Cloud Run environment. "
+                "This often indicates a problem with secret injection. "
+                "Please check that the 'DATABASE_URL' secret is correctly mounted and that the service account has the 'Secret Manager Secret Accessor' role."
+            )
+        
+        # 2. Vérification des identifiants Twitch
+        missing_secrets = []
+        if not settings.TWITCH_CLIENT_ID:
+            missing_secrets.append("TWITCH_CLIENT_ID")
+        if not settings.TWITCH_CLIENT_SECRET:
+            missing_secrets.append("TWITCH_CLIENT_SECRET")
+        
+        if missing_secrets:
+            raise ValueError(f"FATAL: The following required secrets are not set in the Cloud Run environment for the worker: {', '.join(missing_secrets)}. Please check your service configuration.")
+            
     return settings
-
