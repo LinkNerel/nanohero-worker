@@ -51,7 +51,15 @@ def get_app_access_token() -> Optional[str]:
             print(f"[get_app_access_token] 'access_token' not found in Twitch response: {data}", flush=True)
         return token
     except requests.exceptions.RequestException as e:
-        print(f"[get_app_access_token] Network error while fetching token: {e}", flush=True)
+        # Log de manière plus détaillée si c'est une erreur HTTP
+        if isinstance(e, requests.exceptions.HTTPError):
+            print(f"[get_app_access_token] HTTP error while fetching token: {e}", flush=True)
+            try:
+                print(f"[get_app_access_token] Twitch response body: {e.response.text}", flush=True)
+            except Exception:
+                pass  # Ignore si le corps de la réponse ne peut être lu
+        else:
+            print(f"[get_app_access_token] Network error while fetching token: {e}", flush=True)
         return None
     except Exception as e:
         print(f"[get_app_access_token] Unexpected error while fetching token: {e}\n{traceback.format_exc()}", flush=True)
